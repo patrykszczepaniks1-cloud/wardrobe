@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-chip: var(--chip);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-warn: var(--warn);
+  --color-ok: var(--ok);
+  --color-sale: var(--sale);
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius-card: 1.25rem;
+}
+
+:root {
+  --bg: #f6f1ef;
+  --card: #ffffff;
+  --ink: #15151f;
+  --muted: #6b6f80;
+  --line: #ebe3e0;
+  --chip: #f8f4f2;
+  --accent: #d6336c;
+  --accent-soft: #fde7ef;
+  --accent-ink: #b0204f;
+  --warn: #f8d83a;
+  --ok: #22c55e;
+  --sale: #e11d48;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121011;
+    --card: #1d1a1c;
+    --ink: #f3f3f8;
+    --muted: #9a9db0;
+    --line: #2f2a2d;
+    --chip: #262225;
+    --accent: #f0568a;
+    --accent-soft: #3a1d2a;
+    --accent-ink: #ff9dbd;
+    --warn: #f3cf2b;
+    --ok: #34d399;
+    --sale: #fb7185;
+    color-scheme: dark;
+  }
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  overscroll-behavior-y: none;
+}
+
+/* Prevent iOS zoom-on-focus: inputs must be >= 16px */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+.pressable {
+  transition: transform 120ms ease, opacity 120ms ease;
+}
+.pressable:active {
+  transform: scale(0.97);
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-sheet {
+  animation: sheet-in 260ms cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.animate-fade {
+  animation: fade-in 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-sheet,
+  .animate-fade {
+    animation: none;
+  }
+}
