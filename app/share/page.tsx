@@ -20,6 +20,8 @@ function ShareView() {
   const lists = useLists();
   const shared = [params.get("url"), params.get("text"), params.get("title")].filter(Boolean).join(" ");
   const url = shared.match(/https?:\/\/\S+/)?.[0];
+  // Shop apps usually share "Product name – Shop" as the title or text; keep it in case the page can't be read.
+  const title = (params.get("title") || params.get("text")?.replace(/https?:\/\/\S+/g, "") || "").trim();
 
   return (
     <main className="pt-safe mx-auto max-w-lg px-4 py-6">
@@ -34,7 +36,7 @@ function ShareView() {
           <button
             key={b.id}
             disabled={!url}
-            onClick={() => router.replace(`/list/${b.id}?add=${encodeURIComponent(url!)}`)}
+            onClick={() => router.replace(`/list/${b.id}?add=${encodeURIComponent(url!)}${title ? `&title=${encodeURIComponent(title)}` : ""}`)}
             className="pressable flex w-full items-center gap-3 rounded-card bg-card p-3 text-left disabled:opacity-50"
           >
             <span className="size-14 shrink-0 overflow-hidden rounded-2xl bg-accent-soft">

@@ -2,14 +2,24 @@ import { lookup } from "node:dns/promises";
 import net from "node:net";
 
 const MAX_BYTES = 3 * 1024 * 1024;
-const TIMEOUT_MS = 10_000;
+const TIMEOUT_MS = 9_000;
 const MAX_REDIRECTS = 5;
 
+// The full header set a desktop Chrome sends; bot filters flag requests that lack the sec-* hints.
 const BROWSER_HEADERS: Record<string, string> = {
-  "User-Agent":
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
-  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-  "Accept-Language": "en-US,en;q=0.9",
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+  "Accept-Language": "sv-SE,sv;q=0.9,en-US;q=0.8,en;q=0.7",
+  "Cache-Control": "no-cache",
+  Pragma: "no-cache",
+  "Sec-Ch-Ua": '"Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"',
+  "Sec-Ch-Ua-Mobile": "?0",
+  "Sec-Ch-Ua-Platform": '"Windows"',
+  "Sec-Fetch-Dest": "document",
+  "Sec-Fetch-Mode": "navigate",
+  "Sec-Fetch-Site": "none",
+  "Sec-Fetch-User": "?1",
+  "Upgrade-Insecure-Requests": "1",
 };
 
 function isPrivateIp(ip: string): boolean {
@@ -58,14 +68,16 @@ async function assertPublicUrl(url: URL) {
 /** Fetch a public URL as text, following redirects manually so each hop is checked. */
 export async function safeFetchText(
   input: string,
-  opts: { accept?: string; userAgent?: string } = {},
+  opts: { accept?: string; userAgent?: string; headers?: Record<string, string>; timeoutMs?: number } = {},
 ): Promise<{ url: string; text: string; status: number }> {
-  const headers = { ...BROWSER_HEADERS };
+  // Crawlers and APIs get a plain header set; the browser hints would look odd from them.
+  const headers: Record<string, string> = opts.userAgent || opts.headers ? { Accept: "*/*", "Accept-Language": BROWSER_HEADERS["Accept-Language"] } : { ...BROWSER_HEADERS };
   if (opts.accept) headers.Accept = opts.accept;
-  if (opts.userAgent) headers["User-Agent"] = opts.userAgent;
+  headers["User-Agent"] = opts.userAgent ?? BROWSER_HEADERS["User-Agent"];
+  Object.assign(headers, opts.headers);
   let url = new URL(input);
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? TIMEOUT_MS);
   try {
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
       await assertPublicUrl(url);

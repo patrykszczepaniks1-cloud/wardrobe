@@ -32,6 +32,13 @@ npm run typecheck
 
 The link scraper runs as a Node.js serverless function, so a static export won't work.
 
-### A note on scraping
+### How links are read
 
-Some big fashion shops (Zara, H&M, sometimes Zalando) protect their pages against bots. If a link can't be read, the item is still added with the link, and you can fill in the price and picture by hand.
+Big fashion shops (Zalando, ASOS, H&M, Zara) use bot protection that often blocks cloud servers. The scraper tries several routes and combines whatever they return:
+
+1. The product page itself, requested with full browser headers and again as a link-preview crawler.
+2. Shop APIs where one exists (ASOS's product API).
+3. If that still doesn't get the full product, two free page-rendering services, [Jina Reader](https://jina.ai/reader) and [Microlink](https://microlink.io), which load the page in a real browser. The product link is sent to them. Their free tiers are rate-limited. Add `JINA_API_KEY` or `MICROLINK_API_KEY` in Vercel → Settings → Environment Variables for higher limits.
+4. If nothing works, the name and category are taken from the link itself. When you share from a shop's app, the title the app shares is used instead. You can then add the price and picture by hand.
+
+The function runs in Vercel's Stockholm region (`arn1`, set in `vercel.json`), which European shops are less likely to block than the default US region.

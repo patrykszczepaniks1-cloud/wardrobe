@@ -223,6 +223,7 @@ function ListView() {
         onClose={closeItemSheet}
         item={itemSheet?.item}
         initialUrl={itemSheet?.url}
+        initialTitle={search.get("title") ?? undefined}
         lists={listOptions.length ? listOptions : [{ id: list.id, name: list.name, emoji: list.emoji, currency: list.currency }]}
         listId={list.id}
         categories={categories}

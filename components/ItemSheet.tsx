@@ -45,9 +45,9 @@ function toDraft(it: Partial<Item>, currency: string): Draft {
 
 const findLinks = (text: string) => Array.from(new Set(text.match(/https?:\/\/[^\s<>"']+/g) ?? []));
 
-async function fetchProduct(url: string): Promise<ScrapeResult> {
+async function fetchProduct(url: string): Promise<ScrapeResult & { warning?: string }> {
   const res = await fetch(`/api/scrape?url=${encodeURIComponent(url)}`);
-  const data = (await res.json()) as ScrapeResult & { error?: string };
+  const data = (await res.json()) as ScrapeResult & { error?: string; warning?: string };
   if (!res.ok || data.error) throw new Error(data.error || "Could not read that page");
   return data;
 }
@@ -85,6 +85,7 @@ export function ItemSheet({
   listId,
   categories,
   initialUrl,
+  initialTitle,
   defaultCategory,
 }: {
   open: boolean;
@@ -98,6 +99,8 @@ export function ItemSheet({
   listId: string;
   categories: string[];
   initialUrl?: string;
+  /** Title from a share sheet, used when the shop can't be read */
+  initialTitle?: string;
   defaultCategory?: string;
 }) {
   const editing = !!item;
@@ -110,6 +113,7 @@ export function ItemSheet({
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [customCat, setCustomCat] = useState("");
   const [extraCats, setExtraCats] = useState<string[]>([]);
 
@@ -122,6 +126,7 @@ export function ItemSheet({
     setImages(item?.image ? [item.image] : []);
     setLink(initialUrl ?? "");
     setError(null);
+    setNotice(null);
     setProgress(null);
     setCustomCat("");
     if (!item && initialUrl) void scrape(initialUrl);
@@ -139,10 +144,12 @@ export function ItemSheet({
     setError(null);
     try {
       const data = await fetchProduct(url);
+      const sharedTitle = data.warning && initialTitle?.trim() && !/^https?:\/\//.test(initialTitle.trim()) ? initialTitle.trim() : null;
+      setNotice(data.warning ?? null);
       setDraft((d) => ({
         ...d,
         url: data.url || url,
-        title: data.title ?? "",
+        title: sharedTitle ?? data.title ?? "",
         brand: data.brand ?? undefined,
         price: data.price != null ? String(data.price) : "",
         originalPrice: data.originalPrice,
@@ -172,7 +179,8 @@ export function ItemSheet({
       Array.from({ length: 3 }, async () => {
         for (let next = queue.shift(); next; next = queue.shift()) {
           const [url, i] = next;
-          const data = await fetchProduct(url).catch(() => (failed++, null));
+          const data = await fetchProduct(url).catch(() => null);
+          if (!data || data.warning) failed++;
           results[i] = itemFromScrape(url, data, currency, defaultCategory);
           setProgress((p) => p && { ...p, done: p.done + 1 });
         }
@@ -180,7 +188,7 @@ export function ItemSheet({
     );
     setLoading(false);
     onSaveMany(results, target);
-    if (failed) alert(`${failed} of ${urls.length} links couldn't be read — they were added with just the link. Tap them to fill in the details.`);
+    if (failed) alert(`${failed} of ${urls.length} links couldn't be fully read — tap them to add the missing price or picture.`);
   }
 
   async function pasteFromClipboard() {
@@ -302,6 +310,7 @@ export function ItemSheet({
         </div>
       ) : (
         <div className="space-y-5 pt-1">
+          {notice && <p className="rounded-2xl bg-warn/20 p-3 text-sm font-medium">{notice}</p>}
           {(images.length > 0 || draft.image) && (
             <div>
               <div className="no-scrollbar -mx-5 flex snap-x gap-3 overflow-x-auto px-5 pb-1">
