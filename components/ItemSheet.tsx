@@ -6,7 +6,7 @@ import { CURRENCIES, hostOf } from "@/lib/format";
 import { uid } from "@/lib/store";
 import type { Item, ItemStatus, ScrapeResult } from "@/lib/types";
 import { Field, inputCls, primaryBtn, Sheet } from "./Sheet";
-import { CheckIcon, LinkIcon, SparkIcon } from "./icons";
+import { CheckIcon, ExternalIcon, LinkIcon, SparkIcon } from "./icons";
 
 export const STATUS_LABEL: Record<ItemStatus, string> = {
   wanted: "Wishlist",
@@ -237,6 +237,17 @@ export function ItemSheet({
               <button onClick={onDelete} className="pressable h-13 rounded-full px-5 font-semibold text-red-500">
                 Delete
               </button>
+            )}
+            {editing && /^https?:\/\//i.test(draft.url) && (
+              <a
+                href={draft.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="View in shop"
+                className="pressable grid size-13 shrink-0 place-items-center rounded-full bg-chip text-ink"
+              >
+                <ExternalIcon />
+              </a>
             )}
             <button className={primaryBtn} onClick={save}>
               <CheckIcon /> {editing ? "Save changes" : "Add to list"}

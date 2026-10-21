@@ -76,6 +76,11 @@ export const HangerIcon = (p: P) => (
     <path d="M12 9 2.8 15.6A1.3 1.3 0 0 0 3.6 18h16.8a1.3 1.3 0 0 0 .8-2.4Z" />
   </svg>
 );
+export const PencilIcon = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M17 3a2.8 2.8 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+  </svg>
+);
 export const RefreshIcon = (p: P) => (
   <svg {...base(p)}>
     <path d="M21 12a9 9 0 0 1-15.4 6.4L3 16M3 12a9 9 0 0 1 15.4-6.4L21 8" />
