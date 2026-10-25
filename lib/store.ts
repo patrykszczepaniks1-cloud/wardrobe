@@ -1,41 +1,42 @@
-"use client";
 
+"use client";
+ 
 import { createStore, del, get, set, values } from "idb-keyval";
 import { useCallback, useEffect, useState } from "react";
 import type { Item, ScrapeResult, Wishlist } from "./types";
-
+ 
 const db = typeof indexedDB !== "undefined" ? createStore("wardrobe", "lists") : undefined;
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach((l) => l());
-
+ 
 export const uid = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : Math.random().toString(36).slice(2) + Date.now().toString(36);
-
+ 
 export async function listLists(): Promise<Wishlist[]> {
   if (!db) return [];
   const all = await values<Wishlist>(db);
   return all.sort((a, b) => b.updatedAt - a.updatedAt);
 }
-
+ 
 export async function getList(id: string): Promise<Wishlist | undefined> {
   if (!db) return undefined;
   return get<Wishlist>(id, db);
 }
-
+ 
 export async function saveList(list: Wishlist): Promise<void> {
   if (!db) return;
   await set(list.id, { ...list, updatedAt: Date.now() }, db);
   notify();
 }
-
+ 
 export async function deleteList(id: string): Promise<void> {
   if (!db) return;
   await del(id, db);
   notify();
 }
-
+ 
 /** Apply a mutation to a stored list and persist it. */
 export async function updateList(id: string, fn: (l: Wishlist) => Wishlist): Promise<Wishlist | undefined> {
   const current = await getList(id);
@@ -44,12 +45,12 @@ export async function updateList(id: string, fn: (l: Wishlist) => Wishlist): Pro
   await saveList(next);
   return next;
 }
-
+ 
 export function newList(input: Pick<Wishlist, "name" | "emoji" | "currency"> & Partial<Pick<Wishlist, "description" | "images">>): Wishlist {
   const now = Date.now();
   return { id: uid(), images: [], items: [], createdAt: now, updatedAt: now, ...input };
 }
-
+ 
 /** Insert or replace an item, moving it if it now belongs to a different list. */
 export async function upsertItem(item: Item, toId: string, fromId?: string) {
   if (fromId && fromId !== toId) {
@@ -60,15 +61,15 @@ export async function upsertItem(item: Item, toId: string, fromId?: string) {
     return { ...l, items: exists ? l.items.map((i) => (i.id === item.id ? item : i)) : [item, ...l.items] };
   });
 }
-
+ 
 export async function removeItem(itemId: string, listId: string) {
   await updateList(listId, (l) => ({ ...l, items: l.items.filter((i) => i.id !== itemId) }));
 }
-
+ 
 export async function toggleFavorite(itemId: string, listId: string) {
   await updateList(listId, (l) => ({ ...l, items: l.items.map((i) => (i.id === itemId ? { ...i, favorite: !i.favorite } : i)) }));
 }
-
+ 
 /** Re-fetch every linked item in a list and record price changes. Returns how many got cheaper. */
 export async function refreshPrices(listId: string, onProgress?: (done: number, total: number) => void): Promise<number> {
   const list = await getList(listId);
@@ -103,7 +104,7 @@ export async function refreshPrices(listId: string, onProgress?: (done: number, 
   }));
   return cheaper;
 }
-
+ 
 /** Set a new price, remembering the previous one in the item's history. */
 export function withPrice(item: Item, price: number | null, originalPrice?: number | null): Item {
   const history = [...(item.priceHistory ?? [])];
@@ -111,7 +112,7 @@ export function withPrice(item: Item, price: number | null, originalPrice?: numb
   if (price != null && history[history.length - 1]?.price !== price) history.push({ price, at: Date.now() });
   return { ...item, price, originalPrice: originalPrice ?? null, priceHistory: history.slice(-30) };
 }
-
+ 
 export async function importLists(json: string): Promise<number> {
   const data = JSON.parse(json);
   const lists: Wishlist[] = Array.isArray(data) ? data : [data];
@@ -124,7 +125,7 @@ export async function importLists(json: string): Promise<number> {
   notify();
   return count;
 }
-
+ 
 export function useLists() {
   const [lists, setLists] = useState<Wishlist[] | null>(null);
   useEffect(() => {
@@ -135,7 +136,7 @@ export function useLists() {
   }, []);
   return lists;
 }
-
+ 
 /** Live list + an `update` helper that applies a mutation and persists it. */
 export function useList(id: string) {
   const [list, setList] = useState<Wishlist | null | undefined>(undefined);
@@ -145,7 +146,7 @@ export function useList(id: string) {
     listeners.add(load);
     return () => void listeners.delete(load);
   }, [id]);
-
+ 
   const update = useCallback(
     async (fn: (l: Wishlist) => Wishlist) => {
       const next = await updateList(id, fn);
@@ -153,22 +154,33 @@ export function useList(id: string) {
     },
     [id],
   );
-
+ 
   return { list, update };
 }
-
+ 
 export async function downloadJson(data: unknown, name: string) {
-  const file = new File([JSON.stringify(data)], `${name.replace(/[^\w-]+/g, "-").toLowerCase() || "wardrobe"}.json`, {
-    type: "application/json",
-  });
-  try {
-    if (navigator.canShare?.({ files: [file] })) return await navigator.share({ files: [file], title: name });
-  } catch {
-    return;
+  const filename = `${name.replace(/[^\w-]+/g, "-").toLowerCase() || "wardrobe"}.json`;
+  const file = new File([JSON.stringify(data)], filename, { type: "application/json" });
+ 
+  // Only use the share sheet on phones/tablets; desktop gets a normal download.
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (isMobile && navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: name });
+      return;
+    } catch (err) {
+      if ((err as Error).name === "AbortError") return; // user closed the share sheet
+      // any other error: fall through to the download below
+    }
   }
+ 
+  const url = URL.createObjectURL(file);
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(file);
-  a.download = file.name;
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
   a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+ 
